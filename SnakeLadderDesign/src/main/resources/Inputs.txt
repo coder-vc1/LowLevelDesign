@@ -1,0 +1,29 @@
+Enter number of snakes
+5
+99 21
+91 67
+64 39
+41 9
+21 3
+
+Enter number of ladders
+7
+5 31
+9 35
+25 94
+37 81
+18 55
+59 98
+42 90
+
+Enter number of players
+2
+Enter player name
+Vicky
+Enter player name
+Amit
+
+
+Enter Board Size Start and End (three numbers separated by spaces):
+100 0 100
+
