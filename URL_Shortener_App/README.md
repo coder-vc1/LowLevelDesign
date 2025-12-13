@@ -107,3 +107,241 @@ If asked "How do we scale this?", provide these points:
 3.  **Database Sharding:** Shard the database based on the first character of the short code or hash of the user ID to distribute load.
 4.  **Analytics:** Use Kafka to async push click events (analytics) to a data warehouse, so writing stats doesn't slow down the redirection speed.
 
+### 10\) Code Implementation
+
+#### A. Entity & DTOs
+
+```java
+package com.design.urlshortener.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
+
+// Entity
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class UrlMapping {
+    private Long id;
+    private String longUrl;
+    private String shortCode;
+    private LocalDateTime createdDate;
+}
+
+// DTO Request
+@Data
+class ShortenRequest {
+    private String longUrl;
+}
+
+// DTO Response
+@Data
+@AllArgsConstructor
+class ShortenResponse {
+    private String shortUrl;
+    private String shortCode;
+}
+```
+
+#### B. Repository (Interface & In-Memory Implementation)
+
+```java
+package com.design.urlshortener.repository;
+
+import com.design.urlshortener.model.UrlMapping;
+import org.springframework.stereotype.Repository;
+
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+// Interface allows swapping DB later
+public interface UrlRepository {
+    UrlMapping save(UrlMapping mapping);
+    Optional<UrlMapping> findByShortCode(String shortCode);
+    Long getNextId(); // Simulates DB Sequence
+}
+
+@Repository
+class InMemoryUrlRepository implements UrlRepository {
+    // Thread-safe map for storage
+    private final Map<String, UrlMapping> storage = new ConcurrentHashMap<>();
+    
+    // Thread-safe counter for IDs
+    private final AtomicLong sequence = new AtomicLong(10000); // Start at 10k to have non-trivial IDs
+
+    @Override
+    public UrlMapping save(UrlMapping mapping) {
+        // In real DB, ID is generated on save. Here we set it manually if null.
+        if(mapping.getId() == null) {
+            mapping.setId(getNextId());
+        }
+        storage.put(mapping.getShortCode(), mapping);
+        return mapping;
+    }
+
+    @Override
+    public Optional<UrlMapping> findByShortCode(String shortCode) {
+        return Optional.ofNullable(storage.get(shortCode));
+    }
+    
+    @Override
+    public Long getNextId() {
+        return sequence.incrementAndGet();
+    }
+}
+```
+
+#### C. Service (Business Logic)
+
+This uses **Base62 Encoding**. This converts a numeric ID (10001) into a string (e.g., "cbA"). This is the most efficient way to generate short, unique codes.
+
+```java
+package com.design.urlshortener.service;
+
+import com.design.urlshortener.model.UrlMapping;
+import com.design.urlshortener.repository.UrlRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+@Service
+public class UrlShortenerService {
+
+    private final UrlRepository repository;
+    private static final String ALLOWED_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    private static final char[] CHAR_MAP = ALLOWED_CHARS.toCharArray();
+    private static final int BASE = ALLOWED_CHARS.length(); // 62
+    private static final String DOMAIN = "http://short.ly/";
+
+    public UrlShortenerService(UrlRepository repository) {
+        this.repository = repository;
+    }
+
+    public String shortenUrl(String longUrl) {
+        // 1. Get a unique ID (Simulating DB Auto Increment)
+        Long id = repository.getNextId();
+        
+        // 2. Encode ID to Base62 Short Code
+        String shortCode = encodeBase62(id);
+        
+        // 3. Save to DB
+        UrlMapping mapping = new UrlMapping(id, longUrl, shortCode, LocalDateTime.now());
+        repository.save(mapping);
+        
+        return shortCode;
+    }
+
+    public String getOriginalUrl(String shortCode) {
+        return repository.findByShortCode(shortCode)
+                .map(UrlMapping::getLongUrl)
+                .orElseThrow(() -> new RuntimeException("URL not found for code: " + shortCode));
+    }
+
+    // Algorithm: Base 10 (ID) -> Base 62 (String)
+    private String encodeBase62(long id) {
+        StringBuilder sb = new StringBuilder();
+        if (id == 0) return String.valueOf(CHAR_MAP[0]);
+        
+        while (id > 0) {
+            int remainder = (int) (id % BASE);
+            sb.append(CHAR_MAP[remainder]);
+            id = id / BASE;
+        }
+        return sb.reverse().toString();
+    }
+}
+```
+
+#### D. Controller
+
+```java
+package com.design.urlshortener.controller;
+
+import com.design.urlshortener.service.UrlShortenerService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
+
+@RestController
+@RequestMapping("/api")
+public class UrlShortenerController {
+
+    private final UrlShortenerService service;
+
+    public UrlShortenerController(UrlShortenerService service) {
+        this.service = service;
+    }
+
+    // API to Shorten
+    @PostMapping("/shorten")
+    public ResponseEntity<String> shorten(@RequestBody String longUrl) {
+        String shortCode = service.shortenUrl(longUrl);
+        return ResponseEntity.ok("http://short.ly/" + shortCode);
+    }
+
+    // API to Redirect
+    @GetMapping("/{shortCode}")
+    public ResponseEntity<Void> redirect(@PathVariable String shortCode) {
+        String longUrl = service.getOriginalUrl(shortCode);
+        
+        // Return 302 Found (Temporary Redirect)
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(longUrl))
+                .build();
+    }
+}
+```
+
+#### E. Main Class (Simulation)
+
+```java
+package com.design.urlshortener;
+
+import com.design.urlshortener.service.UrlShortenerService;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
+
+@SpringBootApplication
+public class UrlShortenerApplication {
+
+    public static void main(String[] args) {
+        // 1. Initialize Spring Context
+        ConfigurableApplicationContext context = SpringApplication.run(UrlShortenerApplication.class, args);
+
+        // 2. Manually fetch the Service Bean
+        UrlShortenerService service = context.getBean(UrlShortenerService.class);
+
+        System.out.println("---- STARTING SIMULATION ----");
+
+        // 3. Simulate User Input
+        String originalUrl = "https://www.google.com/search?q=system+design+interview";
+        System.out.println("Original URL: " + originalUrl);
+
+        // 4. Shorten Logic
+        String shortCode = service.shortenUrl(originalUrl);
+        System.out.println("Generated Short Code: " + shortCode);
+        System.out.println("Full Short URL: http://short.ly/" + shortCode);
+
+        // 5. Redirect/Retrieval Logic
+        String retrievedUrl = service.getOriginalUrl(shortCode);
+        System.out.println("Retrieved URL from DB: " + retrievedUrl);
+
+        if (originalUrl.equals(retrievedUrl)) {
+            System.out.println("SUCCESS: URL mapping works correctly.");
+        } else {
+            System.out.println("FAILURE: URLs do not match.");
+        }
+        
+        System.out.println("---- END SIMULATION ----");
+    }
+}
+```
+
