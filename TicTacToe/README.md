@@ -226,3 +226,330 @@ We follow the standard **Spring Boot MVC** layered architecture:
   * **Communication:** Upgrade from REST (Request-Response) to **WebSockets** (STOMP protocol) so players receive board updates instantly without polling the server.
 
 -----
+
+### 9\) Code Implementation
+
+#### A. Entities & Enums
+
+```java
+package com.tictactoe.model;
+
+public enum Piece { X, O }
+
+public enum GameStatus { IN_PROGRESS, DRAW, WINNER }
+```
+
+```java
+package com.tictactoe.model;
+
+import lombok.Data;
+
+@Data
+public class Player {
+    private String id;
+    private String name;
+    private Piece piece;
+
+    public Player(String name, Piece piece) {
+        this.name = name;
+        this.piece = piece;
+        this.id = java.util.UUID.randomUUID().toString();
+    }
+}
+```
+
+```java
+package com.tictactoe.model;
+
+import lombok.Data;
+
+@Data
+public class Board {
+    private int size;
+    private Piece[][] grid;
+    private int movesCount;
+
+    public Board(int size) {
+        this.size = size;
+        this.grid = new Piece[size][size];
+        this.movesCount = 0;
+    }
+
+    public boolean isValidMove(int row, int col) {
+        return row >= 0 && row < size && col >= 0 && col < size && grid[row][col] == null;
+    }
+
+    public void setPiece(int row, int col, Piece piece) {
+        grid[row][col] = piece;
+        movesCount++;
+    }
+
+    public boolean isFull() {
+        return movesCount == size * size;
+    }
+    
+    // Simple O(N) check for the specific cell last moved
+    public boolean checkWin(int row, int col, Piece piece) {
+        boolean rowWin = true, colWin = true, diag1 = true, diag2 = true;
+
+        for (int i = 0; i < size; i++) {
+            if (grid[row][i] != piece) rowWin = false;
+            if (grid[i][col] != piece) colWin = false;
+            if (grid[i][i] != piece) diag1 = false;
+            if (grid[i][size - 1 - i] != piece) diag2 = false;
+        }
+        return rowWin || colWin || diag1 || diag2;
+    }
+}
+```
+
+```java
+package com.tictactoe.model;
+
+import lombok.Data;
+import java.util.List;
+import java.util.UUID;
+
+@Data
+public class Game {
+    private String gameId;
+    private Board board;
+    private List<Player> players;
+    private int currentTurnIndex; // 0 or 1
+    private GameStatus status;
+    private Player winner;
+
+    public Game(int boardSize, Player p1, Player p2) {
+        this.gameId = UUID.randomUUID().toString();
+        this.board = new Board(boardSize);
+        this.players = List.of(p1, p2);
+        this.currentTurnIndex = 0;
+        this.status = GameStatus.IN_PROGRESS;
+    }
+    
+    public Player getCurrentPlayer() {
+        return players.get(currentTurnIndex);
+    }
+
+    public void switchTurn() {
+        currentTurnIndex = (currentTurnIndex + 1) % 2;
+    }
+}
+```
+
+#### B. DTOs
+
+```java
+package com.tictactoe.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
+public class MoveRequest {
+    private String gameId;
+    private int row;
+    private int col;
+}
+```
+
+#### C. Repository (Interface + In-Memory Impl)
+
+```java
+package com.tictactoe.repo;
+
+import com.tictactoe.model.Game;
+import java.util.Optional;
+
+public interface GameRepository {
+    Game save(Game game);
+    Optional<Game> findById(String gameId);
+}
+```
+
+```java
+package com.tictactoe.repo;
+
+import com.tictactoe.model.Game;
+import org.springframework.stereotype.Repository;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Repository
+public class InMemoryGameRepository implements GameRepository {
+    private final Map<String, Game> gameStore = new ConcurrentHashMap<>();
+
+    @Override
+    public Game save(Game game) {
+        gameStore.put(game.gameId(), game); // .gameId() if using record or getGameId()
+        return game;
+    }
+
+    @Override
+    public Optional<Game> findById(String gameId) {
+        return Optional.ofNullable(gameStore.get(gameId));
+    }
+}
+```
+
+#### D. Service
+
+```java
+package com.tictactoe.service;
+
+import com.tictactoe.dto.MoveRequest;
+import com.tictactoe.model.*;
+import com.tictactoe.repo.GameRepository;
+import org.springframework.stereotype.Service;
+
+@Service
+public class GameService {
+
+    private final GameRepository gameRepository;
+
+    public GameService(GameRepository gameRepository) {
+        this.gameRepository = gameRepository;
+    }
+
+    public Game createGame(String player1Name, String player2Name) {
+        Player p1 = new Player(player1Name, Piece.X);
+        Player p2 = new Player(player2Name, Piece.O);
+        Game game = new Game(3, p1, p2);
+        return gameRepository.save(game);
+    }
+
+    public Game makeMove(MoveRequest request) {
+        Game game = gameRepository.findById(request.getGameId())
+                .orElseThrow(() -> new RuntimeException("Game not found"));
+
+        if (game.getStatus() != GameStatus.IN_PROGRESS) {
+            throw new RuntimeException("Game is already finished");
+        }
+
+        Board board = game.getBoard();
+        Player currentPlayer = game.getCurrentPlayer();
+
+        if (!board.isValidMove(request.getRow(), request.getCol())) {
+            throw new RuntimeException("Invalid Move");
+        }
+
+        // Execute Move
+        board.setPiece(request.getRow(), request.getCol(), currentPlayer.getPiece());
+
+        // Check Win
+        if (board.checkWin(request.getRow(), request.getCol(), currentPlayer.getPiece())) {
+            game.setStatus(GameStatus.WINNER);
+            game.setWinner(currentPlayer);
+        } else if (board.isFull()) {
+            game.setStatus(GameStatus.DRAW);
+        } else {
+            game.switchTurn();
+        }
+
+        return gameRepository.save(game);
+    }
+    
+    public Game getGame(String gameId) {
+        return gameRepository.findById(gameId).orElse(null);
+    }
+}
+```
+
+#### E. Controller
+
+```java
+package com.tictactoe.controller;
+
+import com.tictactoe.dto.MoveRequest;
+import com.tictactoe.model.Game;
+import com.tictactoe.service.GameService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/game")
+public class GameController {
+
+    private final GameService gameService;
+
+    public GameController(GameService gameService) {
+        this.gameService = gameService;
+    }
+
+    @PostMapping("/start")
+    public ResponseEntity<Game> startGame(@RequestParam String p1, @RequestParam String p2) {
+        return ResponseEntity.ok(gameService.createGame(p1, p2));
+    }
+
+    @PostMapping("/move")
+    public ResponseEntity<Game> makeMove(@RequestBody MoveRequest request) {
+        return ResponseEntity.ok(gameService.makeMove(request));
+    }
+}
+```
+
+#### F. Main Method (Simulation Demo)
+
+```java
+package com.tictactoe;
+
+import com.tictactoe.dto.MoveRequest;
+import com.tictactoe.model.Game;
+import com.tictactoe.service.GameService;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
+
+@SpringBootApplication
+public class TicTacToeApplication {
+
+    public static void main(String[] args) {
+        // Initialize Spring Context
+        ConfigurableApplicationContext context = SpringApplication.run(TicTacToeApplication.class, args);
+        
+        // Manually fetch Service Bean
+        GameService gameService = context.getBean(GameService.class);
+
+        System.out.println("--- Starting Simulation ---");
+
+        // 1. Create Game
+        Game game = gameService.createGame("Alice", "Bob");
+        String gameId = game.getGameId();
+        System.out.println("Game Created: " + gameId);
+        System.out.println("Current Turn: " + game.getCurrentPlayer().getName());
+
+        // 2. Make Moves (Simulate a Win for X)
+        // X moves (0,0)
+        game = gameService.makeMove(new MoveRequest(gameId, 0, 0));
+        System.out.println("Move (0,0) by X. Next: " + game.getCurrentPlayer().getName());
+
+        // O moves (1,0)
+        game = gameService.makeMove(new MoveRequest(gameId, 1, 0));
+        System.out.println("Move (1,0) by O. Next: " + game.getCurrentPlayer().getName());
+
+        // X moves (0,1)
+        game = gameService.makeMove(new MoveRequest(gameId, 0, 1)); 
+        System.out.println("Move (0,1) by X. Next: " + game.getCurrentPlayer().getName());
+
+        // O moves (1,1)
+        game = gameService.makeMove(new MoveRequest(gameId, 1, 1));
+        System.out.println("Move (1,1) by O. Next: " + game.getCurrentPlayer().getName());
+
+        // X moves (0,2) -> WIN
+        game = gameService.makeMove(new MoveRequest(gameId, 0, 2));
+        System.out.println("Move (0,2) by X.");
+        
+        // 3. Result
+        System.out.println("--- Game Over ---");
+        System.out.println("Status: " + game.getStatus());
+        if (game.getWinner() != null) {
+            System.out.println("Winner: " + game.getWinner().getName());
+        }
+    }
+}
+```
+
+-----
+
