@@ -113,12 +113,6 @@ If asked "How do we scale this?", provide these points:
 #### A. Entity & DTOs
 
 ```java
-package com.design.urlshortener.model;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
 
 // Entity
 @Data
@@ -149,15 +143,6 @@ class ShortenResponse {
 #### B. Repository (Interface & In-Memory Implementation)
 
 ```java
-package com.design.urlshortener.repository;
-
-import com.design.urlshortener.model.UrlMapping;
-import org.springframework.stereotype.Repository;
-
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 // Interface allows swapping DB later
 public interface UrlRepository {
@@ -201,14 +186,6 @@ class InMemoryUrlRepository implements UrlRepository {
 This uses **Base62 Encoding**. This converts a numeric ID (10001) into a string (e.g., "cbA"). This is the most efficient way to generate short, unique codes.
 
 ```java
-package com.design.urlshortener.service;
-
-import com.design.urlshortener.model.UrlMapping;
-import com.design.urlshortener.repository.UrlRepository;
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.util.Optional;
 
 @Service
 public class UrlShortenerService {
@@ -261,14 +238,6 @@ public class UrlShortenerService {
 #### D. Controller
 
 ```java
-package com.design.urlshortener.controller;
-
-import com.design.urlshortener.service.UrlShortenerService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.net.URI;
 
 @RestController
 @RequestMapping("/api")
@@ -303,12 +272,6 @@ public class UrlShortenerController {
 #### E. Main Class (Simulation)
 
 ```java
-package com.design.urlshortener;
-
-import com.design.urlshortener.service.UrlShortenerService;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ConfigurableApplicationContext;
 
 @SpringBootApplication
 public class UrlShortenerApplication {
@@ -345,5 +308,6 @@ public class UrlShortenerApplication {
     }
 }
 ```
+
 
 
