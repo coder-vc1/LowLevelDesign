@@ -17,3 +17,7 @@ Design code Readme files:
 8. Payment Processing System: https://github.com/coder-vc1/Low-Level-Design/blob/main/Projects/PaymentProcessingSystem.md
 
 9. Ride Sharing System: https://github.com/coder-vc1/Low-Level-Design/blob/main/Projects/Ride-Sharing-System.md
+
+10. Video-Streaming-Service (YouTube): https://github.com/coder-vc1/Low-Level-Design/blob/main/Projects/Video-Streaming-Service.md
+
+11. Social Media Application: https://github.com/coder-vc1/Low-Level-Design/blob/main/Projects/Social-Media-Application.md
