@@ -22,6 +22,10 @@
 
 11. Social Media Application: https://github.com/coder-vc1/Low-Level-Design/blob/main/Projects/Social-Media-Application.md
 
+12. IRCTC Ticket Booking System: https://github.com/coder-vc1/Low-Level-Design/blob/main/Projects/IRCTC-Ticket-Booking-System.md
+
+13. BookMyShow : https://github.com/coder-vc1/Low-Level-Design/blob/main/Projects/BookMyShow.md
+
 ---
 # Additional References:
 
