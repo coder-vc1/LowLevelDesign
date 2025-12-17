@@ -1,6 +1,17 @@
-Here is the Low-Level Design (LLD) for a URL Shortener, structured specifically for a 1-hour interview setting using Java Spring Boot.
+---
+# Low-Level Design (LLD) for a URL Shortener using Java.
+---
 
-### 1\) Rough Flow of Program
+### 1\) Functional & Non-Functional Requirements
+
+| Type | Requirement |
+| :--- | :--- |
+| **Functional** | 1. Shorten a long URL.<br>2. Redirect from short code to original URL.<br>3. Handle invalid URLs.<br>4. (Optional) Custom alias support. |
+| **Non-Functional** | 1. **Read-Heavy:** Redirections happen much more than shortening (100:1 ratio).<br>2. **Low Latency:** Redirection must be near-instant.<br>3. **Unique Keys:** No two different URLs should get the same short code collision.<br>4. **Scalable:** Handle traffic spikes. |
+
+-----
+
+### 2\) Rough Flow of Program
 
 1.  **Input:** Client sends a Long URL (e.g., `https://google.com/very-long-path`).
 2.  **Processing:**
@@ -10,15 +21,6 @@ Here is the Low-Level Design (LLD) for a URL Shortener, structured specifically 
 3.  **Storage:** System maps `Short Code` \<-\> `Long URL` in the persistence layer.
 4.  **Output:** System returns the Short URL (e.g., `http://short.ly/abc12`).
 5.  **Retrieval:** Client hits Short URL -\> System looks up Long URL -\> System redirects (HTTP 302).
-
------
-
-### 2\) Functional & Non-Functional Requirements
-
-| Type | Requirement |
-| :--- | :--- |
-| **Functional** | 1. Shorten a long URL.<br>2. Redirect from short code to original URL.<br>3. Handle invalid URLs.<br>4. (Optional) Custom alias support. |
-| **Non-Functional** | 1. **Read-Heavy:** Redirections happen much more than shortening (100:1 ratio).<br>2. **Low Latency:** Redirection must be near-instant.<br>3. **Unique Keys:** No two different URLs should get the same short code collision.<br>4. **Scalable:** Handle traffic spikes. |
 
 -----
 
@@ -308,6 +310,7 @@ public class UrlShortenerApplication {
     }
 }
 ```
+
 
 
 
