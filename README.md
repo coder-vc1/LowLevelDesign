@@ -13,3 +13,5 @@ Design code Readme files:
 6. Parking Lot System: https://github.com/coder-vc1/Low-Level-Design/tree/main/Parking#readme
 
 7. Food Ordering Application: https://github.com/coder-vc1/Low-Level-Design/blob/main/Projects/FoodOrderingApplication.md
+
+8. Payment Processing System: https://github.com/coder-vc1/Low-Level-Design/blob/main/Projects/PaymentProcessingSystem.md
