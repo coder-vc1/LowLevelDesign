@@ -8,4 +8,6 @@ Design code Readme files:
 
 4. Snake and Ladder Game (NOT SnakeLadderDesign) : https://github.com/coder-vc1/LowLevelDesign/tree/main/SnakeLadderGame#readme
 
-5. Async Job Scheduler: https://github.com/coder-vc1/LowLevelDesign/tree/main/SchedulerDriver#readme
+5. Job Scheduler: https://github.com/coder-vc1/LowLevelDesign/tree/main/SchedulerDriver#readme
+
+6. Parking Lot System: https://github.com/coder-vc1/Low-Level-Design/tree/main/Parking#readme
