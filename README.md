@@ -24,6 +24,10 @@ Design code Readme files:
 
 
 Additional References:
-LLD: https://github.com/ashishps1/awesome-low-level-design
-System design: https://github.com/ashishps1/awesome-system-design-resources
-Behavioral: https://github.com/ashishps1/awesome-behavioral-interviews
+
+1. LLD: https://github.com/ashishps1/awesome-low-level-design
+
+2. System design: https://github.com/ashishps1/awesome-system-design-resources
+
+3. Behavioral: https://github.com/ashishps1/awesome-behavioral-interviews
+   
