@@ -1,5 +1,5 @@
 ---
-Here is the complete **Low-Level Design (LLD) for the Parking Lot System**
+Low-Level Design (LLD) for the Parking Lot System
 ---
 
 ### 1) Rough Flow of Program
@@ -143,12 +143,6 @@ classDiagram
 `VehicleType.java`, `SpotType.java`, `Vehicle.java`, `ParkingSpot.java`, `ParkingTicket.java`
 
 ```java
-package com.parking.model;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
 
 // 1. Enums
 public enum VehicleType { 
@@ -201,10 +195,6 @@ public class ParkingTicket {
 `EntryRequest.java`, `ExitRequest.java`
 
 ```java
-package com.parking.dto;
-
-import com.parking.model.VehicleType;
-import lombok.Data;
 
 @Data
 public class EntryRequest {
@@ -224,13 +214,6 @@ public class ExitRequest {
 `ParkingRepository.java` (Interface + Implementation)
 
 ```java
-package com.parking.repo;
-
-import com.parking.model.*;
-import org.springframework.stereotype.Repository;
-
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public interface ParkingRepository {
     ParkingSpot findAvailableSpot(SpotType type);
@@ -299,16 +282,7 @@ public class InMemoryParkingRepository implements ParkingRepository {
 `ParkingService.java`
 
 ```java
-package com.parking.service;
 
-import com.parking.model.*;
-import com.parking.repo.ParkingRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -394,14 +368,7 @@ public class ParkingService {
 `ParkingController.java`
 
 ```java
-package com.parking.controller;
 
-import com.parking.dto.*;
-import com.parking.model.*;
-import com.parking.service.ParkingService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/parking")
@@ -429,13 +396,7 @@ public class ParkingController {
 `ParkingApplication.java`
 
 ```java
-package com.parking;
 
-import com.parking.model.*;
-import com.parking.service.ParkingService;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ConfigurableApplicationContext;
 
 @SpringBootApplication
 public class ParkingApplication {
